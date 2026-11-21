@@ -1,5 +1,5 @@
 # Mini RedHerring — Honey-Patch 축소 구현 (SSS 1팀)
-
+> **팀원은 작업 전에 [CONTRIBUTING.md](CONTRIBUTING.md)(팀 작업 규칙)를 먼저 읽어 주세요.**
 논문: *From Patches to Honey-Patches: Lightweight Attacker Misdirection, Deception, and Disinformation* (Araujo et al., ACM CCS 2014)
 
 일반 패치는 공격 입력을 거부해 "이 서버는 패치됨"을 드러낸다. 허니패치는 같은 탐지 조건에서 거부 대신 공격자 세션을
