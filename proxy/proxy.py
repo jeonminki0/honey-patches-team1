@@ -3,7 +3,7 @@
 - 타깃이 /__hp/fork 요청 → 미끼 acquire → 상태 restore → 세션을 미끼에 고정
 - 타깃 응답에 X-HP-Forked 가 있으면 같은 요청을 미끼로 재전송(replay)
 원논문과 차이: 프로세스/TCP 연결 이전 대신 '상태 복원 + 요청 재전송'."""
-import argparse, json, os, sys, threading, time, urllib.request, urllib.error
+import argparse, json, os, signal, sys, threading, time, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from honeypatch import config
@@ -84,7 +84,13 @@ def main():
     ap.add_argument("--port", type=int, default=config.PROXY_PORT)
     a = ap.parse_args()
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-    ThreadingHTTPServer((config.HOST, a.port), H).serve_forever()
+    pool.init(log=dlog)
+    pool.start_all()                                   # 미끼 프로세스는 pool이 띄우고 관리
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))   # terminate() 시 미끼도 함께 정리
+    try:
+        ThreadingHTTPServer((config.HOST, a.port), H).serve_forever()
+    finally:
+        pool.stop_all()
 
 if __name__ == "__main__":
     main()
