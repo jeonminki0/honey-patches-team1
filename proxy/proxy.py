@@ -7,10 +7,11 @@ import argparse, json, os, sys, threading, time, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from honeypatch import config
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pool                            # proxy/pool.py: 미끼 풀 acquire/release
 
 LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "logs", "defender.jsonl")
 LOCK = threading.Lock()
-AVAILABLE = list(config.DECOY_PORTS)   # 미끼 풀 (사용 가능)
 PINNED = {}                            # session_id -> decoy port
 
 def dlog(event, **kw):
@@ -18,10 +19,6 @@ def dlog(event, **kw):
     rec = {"t": round(time.time(), 4), "event": event, **kw}
     with LOCK, open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-
-def acquire():
-    with LOCK:
-        return AVAILABLE.pop(0) if AVAILABLE else None
 
 def forward(port, method, path, body, headers):
     req = urllib.request.Request(f"http://{config.HOST}:{port}{path}", data=body if method == "POST" else None,
@@ -48,7 +45,7 @@ class H(BaseHTTPRequestHandler):
     def _fork(self, raw):
         msg = json.loads(raw)
         sid = msg["session"]
-        port = acquire()
+        port = pool.acquire()
         if port is None:
             dlog("fork_fail", session=sid, reason="decoy pool empty")
             return self._reply(503, b"no decoy")
