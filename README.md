@@ -20,10 +20,20 @@ python demo/run_demo.py
 
 ```bash
 python server/app.py --mode honeypatched --role target --port 9000 &
-python server/app.py --mode honeypatched --role decoy  --port 9101 &
-python server/app.py --mode honeypatched --role decoy  --port 9102 &
 python proxy/proxy.py &
 python demo/client.py --session attacker-1 --payload hi --length 64
+```
+
+- 미끼(9101·9102)는 프록시가 자동으로 띄운다 (`proxy/pool.py`). 미끼를 따로 띄우면 포트가 겹치므로 띄우지 않는다.
+- 허니파일 확인: `curl -H "X-Session-Id: attacker-1" http://127.0.0.1:8080/files/users.csv`
+  (fork 전·정상 사용자는 `data/` 진짜 파일, 미끼에 고정된 세션은 `decoy_template/` 가짜 파일)
+
+미끼 풀 단위 확인 스크립트 (각각 따로 실행, 포트가 비어 있어야 함):
+
+```bash
+python tests/decoy_pool/check_release.py   # release → 재생성 → 다시 acquire
+python tests/decoy_pool/check_timeout.py   # DECOY_TIMEOUT 후 자동 release (기본 30초 → 약 1분 소요)
+python tests/decoy_pool/check_files.py     # 허니파일 제공, 경로 조작 차단
 ```
 
 ## 구조
@@ -32,11 +42,15 @@ python demo/client.py --session attacker-1 --payload hi --length 64
 honeypatch/config.py   포트, 시드 사용자(진짜 비밀)
 honeypatch/hp.py       hp_init / hp_fork / hp_skip   (논문 §3, Listing 2·3)
 honeypatch/redact.py   같은 길이·형식의 가짜 값으로 비밀 치환 (논문 §4.1)
-server/app.py          취약 서버 /heartbeat, --mode unpatched|patched|honeypatched, --role target|decoy
-proxy/proxy.py         리버스 프록시 + 미끼 풀(acquire) + 세션 고정 (논문 §3)
+server/app.py          취약 서버 /heartbeat, GET /files/<이름>, --mode unpatched|patched|honeypatched, --role target|decoy
+proxy/proxy.py         리버스 프록시 + 세션 고정 + 세션 타임아웃 감시 (논문 §3)
+proxy/pool.py          미끼 풀: 미끼 프로세스 기동·acquire·release(destroy → clone → start)
+data/                  타깃이 주는 진짜 파일 (config.txt, users.csv)
+decoy_template/        미끼가 주는 같은 형식의 가짜 파일 (허니파일, 실제 비밀 없음)
 demo/fixed_cases.json  11주차 고정 검증 사례 3종 (수정 금지)
 demo/run_demo.py       3모드 × 3사례 실행, 비교표·판정
 demo/client.py         수동 요청 CLI
+tests/decoy_pool/      미끼 풀 단위 확인 스크립트 (release, 타임아웃, 허니파일)
 ```
 
 ## 동작 흐름 (허니패치 모드, 위반 입력)
@@ -65,15 +79,31 @@ demo/client.py         수동 요청 CLI
 | CRIU로 프로세스 전체 체크포인트·복원 | 세션 상태(JSON)만 직렬화·복원 |
 | 체크포인트 중 구조체 메모리 redaction | 직렬화할 때 세션 레코드 redaction |
 | TCP repair로 연결 이전 | 상태 복원 후 요청 재전송(replay) |
-| LXC 컨테이너 풀 + overlayfs 재생성 | 로컬 프로세스 2개 풀 (재활용 미구현) |
+| LXC 컨테이너 풀 + overlayfs 재생성 | 로컬 프로세스 2개 풀. release할 때 프로세스를 종료하고 같은 포트로 다시 띄움(빈 상태로 시작) |
+| 미끼 컨테이너 수명 정책 | 고정 세션이 `DECOY_TIMEOUT`초(기본 30) 동안 요청이 없으면 자동 release |
+| 미끼 파일시스템에 허니파일 배치 | `GET /files/<이름>`으로 `decoy_template/` 파일 제공 (형식은 같고 값만 가짜) |
 
 ## 진행 현황 / TODO
 
 - [x] 3모드 서버, hp 라이브러리, redaction, 프록시 fork·세션 고정, 고정 사례 자동 판정
-- [ ] 미끼 release·재활용 (destroy → clone → start), 세션 타임아웃
-- [ ] 미끼 허니파일, 공격자 행위 로그
+- [x] 미끼 release·재활용 (destroy → clone → start), 세션 타임아웃
+- [x] 미끼 허니파일
+- [ ] 공격자 행위 로그
 - [ ] (선택) Docker 컨테이너로 미끼 격리, CRIU 시도
 - [ ] 14주차 변수 실험: redaction 켬/끔에 따른 공격자 응답 시간
+
+## 알려진 문제
+
+- **Windows에서 미끼 정리 미확인**: 프록시가 미끼 프로세스를 띄우고, 종료 신호(SIGTERM)를 받으면 함께 정리한다.
+  Windows의 `terminate()`는 신호 없이 바로 프로세스를 죽이므로 미끼가 남아, 다음 실행 때 9101·9102 포트가 충돌할 수 있다.
+  Linux(Ubuntu 22.04 / Python 3.12)에서만 확인했다. Windows에서 실행 후 미끼 프로세스가 남는지 확인 필요.
+- **타임아웃 직후 요청이 끊길 수 있음**: 타임아웃이 되면 세션 고정을 먼저 풀고 미끼를 재생성한다.
+  고정 해제 직전에 그 미끼로 가던 요청이 있으면, 재생성 중 프로세스가 종료되어 연결이 끊길 수 있다.
+  고정 해제 이후 요청은 정상적으로 타깃으로 간다.
+- **이전 실행의 프록시가 남아 있으면 결과가 틀어짐**: `run_demo.py`는 포트가 이미 쓰이고 있어도 응답만 오면 기동된 것으로 본다.
+  수동 실행한 프록시를 끄지 않고 데모를 돌리면 남은 프록시(이전 세션 고정 상태 포함)와 통신해 FAIL이 나온다
+  (실제로 12/15 발생). 데모 전에 `python proxy/proxy.py`, `server/app.py` 프로세스가 남아 있지 않은지 확인하고,
+  프록시는 강제 종료(`kill -9`) 대신 일반 종료(`kill`, Ctrl+C)로 끈다(그래야 미끼도 함께 정리됨).
 
 ## 재현 기록
 

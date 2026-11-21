@@ -1,0 +1,7 @@
+# heartbeat service configuration
+db_host=10.0.0.5
+db_user=svc_heartbeat
+db_password=Tq7#vR2m!xL9
+api_key=3e9a1c7f5b2d8046e1a9c3f7
+admin_user=alice
+admin_token=9f2c4e81a7b3d065

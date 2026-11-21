@@ -42,9 +42,7 @@ def leaks(body):
 
 def run_mode(mode):
     procs = [py("server/app.py", "--mode", mode, "--role", "target", "--port", str(config.TARGET_PORT))]
-    for p in config.DECOY_PORTS:
-        procs.append(py("server/app.py", "--mode", "honeypatched", "--role", "decoy", "--port", str(p)))
-    procs.append(py("proxy/proxy.py"))
+    procs.append(py("proxy/proxy.py"))       # 미끼(config.DECOY_PORTS)는 proxy/pool.py가 띄움
     try:
         for p in [config.TARGET_PORT, *config.DECOY_PORTS, config.PROXY_PORT]:
             wait_up(p)

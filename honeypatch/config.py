@@ -3,6 +3,7 @@ PROXY_PORT = 8080
 TARGET_PORT = 9000
 DECOY_PORTS = [9101, 9102]          # 미끼 풀 크기 = 2
 HOST = "127.0.0.1"
+DECOY_TIMEOUT = 30                 # 미끼에 고정된 세션이 이 시간(초) 동안 요청이 없으면 release
 
 # 타깃 서버 메모리에 미리 올라가 있는 '다른 사용자'의 비밀 (검증 시 노출 여부 확인용)
 SEED_USERS = [

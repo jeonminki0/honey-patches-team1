@@ -3,15 +3,17 @@
 - 타깃이 /__hp/fork 요청 → 미끼 acquire → 상태 restore → 세션을 미끼에 고정
 - 타깃 응답에 X-HP-Forked 가 있으면 같은 요청을 미끼로 재전송(replay)
 원논문과 차이: 프로세스/TCP 연결 이전 대신 '상태 복원 + 요청 재전송'."""
-import argparse, json, os, sys, threading, time, urllib.request, urllib.error
+import argparse, json, os, signal, sys, threading, time, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from honeypatch import config
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pool                            # proxy/pool.py: 미끼 풀 acquire/release
 
 LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "logs", "defender.jsonl")
 LOCK = threading.Lock()
-AVAILABLE = list(config.DECOY_PORTS)   # 미끼 풀 (사용 가능)
 PINNED = {}                            # session_id -> decoy port
+LAST_SEEN = {}                         # session_id -> 미끼에 고정된 세션의 마지막 요청 시각
 
 def dlog(event, **kw):
     """방어자 내부 로그 (공격자 응답과 분리해 기록)."""
@@ -19,9 +21,27 @@ def dlog(event, **kw):
     with LOCK, open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
-def acquire():
+def touch(sid):
     with LOCK:
-        return AVAILABLE.pop(0) if AVAILABLE else None
+        if sid in PINNED:
+            LAST_SEEN[sid] = time.time()
+
+def reap_idle():
+    """DECOY_TIMEOUT 동안 요청이 없는 고정 세션을 풀고 미끼를 release(재생성)."""
+    now = time.time()
+    with LOCK:
+        idle = [(s, p) for s, p in PINNED.items() if now - LAST_SEEN.get(s, now) >= config.DECOY_TIMEOUT]
+        for s, _ in idle:                      # 먼저 고정 해제 → 이후 요청은 타깃으로
+            del PINNED[s]
+            LAST_SEEN.pop(s, None)
+    for s, p in idle:
+        dlog("session_timeout", session=s, decoy=p, idle=config.DECOY_TIMEOUT)
+        pool.release(p, reason="timeout")
+
+def _reaper():
+    while True:
+        time.sleep(max(0.2, min(1.0, config.DECOY_TIMEOUT / 4)))
+        reap_idle()
 
 def forward(port, method, path, body, headers):
     req = urllib.request.Request(f"http://{config.HOST}:{port}{path}", data=body if method == "POST" else None,
@@ -48,7 +68,7 @@ class H(BaseHTTPRequestHandler):
     def _fork(self, raw):
         msg = json.loads(raw)
         sid = msg["session"]
-        port = acquire()
+        port = pool.acquire()
         if port is None:
             dlog("fork_fail", session=sid, reason="decoy pool empty")
             return self._reply(503, b"no decoy")
@@ -58,6 +78,7 @@ class H(BaseHTTPRequestHandler):
             return self._reply(503, b"restore failed")
         with LOCK:
             PINNED[sid] = port
+            LAST_SEEN[sid] = time.time()
         dlog("fork_ok", session=sid, decoy=port)
         self._reply(200, b"forked")
 
@@ -74,6 +95,7 @@ class H(BaseHTTPRequestHandler):
             port = PINNED[sid]
             st, rh, body = forward(port, method, self.path, raw, hdr)
             dlog("route", session=sid, to="decoy", status=st, replay=True)
+        touch(sid)                                        # 미끼 고정 세션이면 마지막 요청 시각 갱신
         self._reply(st, body, rh)                         # 내부 헤더(X-HP-*)는 제거됨
 
     def do_GET(self):
@@ -87,7 +109,14 @@ def main():
     ap.add_argument("--port", type=int, default=config.PROXY_PORT)
     a = ap.parse_args()
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-    ThreadingHTTPServer((config.HOST, a.port), H).serve_forever()
+    pool.init(log=dlog)
+    pool.start_all()                                   # 미끼 프로세스는 pool이 띄우고 관리
+    threading.Thread(target=_reaper, daemon=True).start()   # 미끼 세션 타임아웃 감시
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))   # terminate() 시 미끼도 함께 정리
+    try:
+        ThreadingHTTPServer((config.HOST, a.port), H).serve_forever()
+    finally:
+        pool.stop_all()
 
 if __name__ == "__main__":
     main()
