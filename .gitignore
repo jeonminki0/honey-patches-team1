@@ -3,3 +3,4 @@ __pycache__/
 logs/
 results/raw_results.json
 .venv/
+*:Zone.Identifier
