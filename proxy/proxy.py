@@ -53,13 +53,17 @@ def req_fields(raw):
         msg = json.loads(raw)
         if not isinstance(msg["payload"], str):
             raise TypeError("payload 가 문자열이 아님")
+        payload_len = len(msg["payload"].encode())   # 서버와 같게 바이트로 센다
         length = int(msg["length"])
-    except (ValueError, TypeError, KeyError, IndexError):
+    except Exception:
+        # 서버가 받아들이지 못하는 입력은 종류를 가리지 않고 malformed 로 둔다.
+        # length=1e999 는 OverflowError, payload 의 고립 서로게이트는
+        # UnicodeEncodeError 처럼 예외 종류가 제각각이라 하나씩 나열하지 않는다.
         out["malformed"] = True
         return out
-    out["payload_len"] = len(msg["payload"].encode())
+    out["payload_len"] = payload_len
     out["declared_len"] = length
-    out["over"] = length - out["payload_len"]        # 0보다 크면 위반 입력
+    out["over"] = length - payload_len               # 0보다 크면 위반 입력
     return out
 
 def touch(sid):
@@ -150,14 +154,19 @@ class H(BaseHTTPRequestHandler):
             port = PINNED[sid]
             st, rh, body = forward(port, method, self.path, raw, hdr)
             dlog("route", session=sid, to="decoy", status=st, replay=True)
-        f = req_fields(raw)
-        to_decoy = port != config.TARGET_PORT
-        # 미끼로 갔거나, 위반 입력이거나, 서버가 못 읽는 형식일 때만 남긴다.
-        # 정상 사용자 요청과 내부 경로(/__)는 제외한다.
-        if not self.path.startswith("/__") and (to_decoy or f.get("over", 0) > 0 or f.get("malformed")):
-            alog("request", session=sid, mode=target_mode(), method=method, path=self.path,
-                 to="decoy" if to_decoy else "target",
-                 status=st, resp_len=len(body), leaks=count_leaks(body), **f)
+        # 기록은 공격자가 받는 응답에 영향을 주면 안 된다. 어떤 이유로 실패해도
+        # 아래 _reply 는 그대로 나가야 하므로 통째로 감싼다.
+        try:
+            f = req_fields(raw)
+            to_decoy = port != config.TARGET_PORT
+            # 미끼로 갔거나, 위반 입력이거나, 서버가 못 읽는 형식일 때만 남긴다.
+            # 정상 사용자 요청과 내부 경로(/__)는 제외한다.
+            if not self.path.startswith("/__") and (to_decoy or f.get("over", 0) > 0 or f.get("malformed")):
+                alog("request", session=sid, mode=target_mode(), method=method, path=self.path,
+                     to="decoy" if to_decoy else "target",
+                     status=st, resp_len=len(body), leaks=count_leaks(body), **f)
+        except Exception:
+            pass
         touch(sid)                                        # 미끼 고정 세션이면 마지막 요청 시각 갱신
         self._reply(st, body, rh)                         # 내부 헤더(X-HP-*)는 제거됨
 
