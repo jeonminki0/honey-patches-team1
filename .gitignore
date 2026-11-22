@@ -4,3 +4,4 @@ logs/
 results/raw_results.json
 .venv/
 *:Zone.Identifier
+results/compare.md
