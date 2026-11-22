@@ -7,10 +7,10 @@
 | normal | honeypatched | 200 | 5 | 0 | 0 | `'hello'` |
 | violation | unpatched | 200 | 64 | 5 | 0 | `'hi9f2c4e81a7b3d065|alice|10.0.0.23;51d8e'` |
 | violation | patched | 400 | 13 | 0 | 0 | `'bad heartbeat'` |
-| violation | honeypatched | 200 | 64 | 0 | 1 | `'hi7141270de8880f57|ffye8|73.3.9.96;34711'` |
+| violation | honeypatched | 200 | 64 | 0 | 1 | `'hi190fb07c26a6ed0b|8akdf|78.1.2.99;151ac'` |
 | boundary | unpatched | 200 | 6 | 0 | 0 | `'hello9'` |
 | boundary | patched | 400 | 13 | 0 | 0 | `'bad heartbeat'` |
-| boundary | honeypatched | 200 | 6 | 0 | 1 | `'hello2'` |
+| boundary | honeypatched | 200 | 6 | 0 | 1 | `'helloe'` |
 
 ## 기대 결과 대조
 
