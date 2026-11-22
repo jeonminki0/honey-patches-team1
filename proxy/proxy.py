@@ -2,7 +2,8 @@
 - 평소: 요청을 타깃으로 전달 (페이로드를 검사하지 않음)
 - 타깃이 /__hp/fork 요청 → 미끼 acquire → 상태 restore → 세션을 미끼에 고정
 - 타깃 응답에 X-HP-Forked 가 있으면 같은 요청을 미끼로 재전송(replay)
-- 요청마다 공격자 행위를 defender.jsonl 에 기록 (입력 길이, 응답 길이, 비밀 노출 수)
+- 미끼로 간 요청, 위반 입력, 형식이 깨진 요청을 attacker.jsonl 에 기록
+  (타깃 모드, 입력 길이(바이트), 응답 길이, 비밀 노출 수)
 원논문과 차이: 프로세스/TCP 연결 이전 대신 '상태 복원 + 요청 재전송'."""
 import argparse, json, os, signal, sys, threading, time, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,14 +13,22 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pool                            # proxy/pool.py: 미끼 풀 acquire/release
 
 LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "logs", "defender.jsonl")
+ATTACK_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "logs", "attacker.jsonl")
 LOCK = threading.Lock()
 PINNED = {}                            # session_id -> decoy port
+TARGET_MODE = None                     # 타깃 모드(unpatched/patched/honeypatched). 첫 요청 때 읽는다
 LAST_SEEN = {}                         # session_id -> 미끼에 고정된 세션의 마지막 요청 시각
 
 def dlog(event, **kw):
     """방어자 내부 로그 (공격자 응답과 분리해 기록)."""
     rec = {"t": round(time.time(), 4), "event": event, **kw}
     with LOCK, open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+def alog(event, **kw):
+    """공격자 행위 로그. 방어자 로그와 파일을 나눠 둔다."""
+    rec = {"t": round(time.time(), 4), "event": event, **kw}
+    with LOCK, open(ATTACK_LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 SECRETS = config.real_secrets()          # 진짜 비밀 문자열 (노출 여부 판정용)
@@ -33,22 +42,24 @@ def count_leaks(body):
     return sum(1 for s in SECRETS if s in text)
 
 def req_fields(raw):
-    """공격자 요청에서 기록할 값만 뽑는다. 본문 전체는 남기지 않는다."""
+    """공격자 요청에서 기록할 값만 뽑는다. 본문 전체는 남기지 않는다.
+
+    서버(app.py)가 payload 를 encode() 한 뒤 길이를 비교하므로 바이트로 센다.
+    서버가 받아들이지 못할 형식이면 over 를 계산할 수 없으니 malformed 로 남긴다."""
     if not raw:
         return {}
     out = {"body_len": len(raw)}
     try:
         msg = json.loads(raw)
-    except (ValueError, TypeError):
+        if not isinstance(msg["payload"], str):
+            raise TypeError("payload 가 문자열이 아님")
+        length = int(msg["length"])
+    except (ValueError, TypeError, KeyError, IndexError):
+        out["malformed"] = True
         return out
-    if not isinstance(msg, dict):
-        return out
-    if "payload" in msg:
-        out["payload_len"] = len(str(msg["payload"]))
-    if isinstance(msg.get("length"), int):
-        out["declared_len"] = msg["length"]
-    if "payload_len" in out and "declared_len" in out:
-        out["over"] = out["declared_len"] - out["payload_len"]   # 0보다 크면 위반 입력
+    out["payload_len"] = len(msg["payload"].encode())
+    out["declared_len"] = length
+    out["over"] = length - out["payload_len"]        # 0보다 크면 위반 입력
     return out
 
 def touch(sid):
@@ -81,6 +92,20 @@ def forward(port, method, path, body, headers):
             return r.status, dict(r.headers), r.read()
     except urllib.error.HTTPError as e:
         return e.code, dict(e.headers), e.read()
+
+def target_mode():
+    """타깃이 어느 모드인지 /__health 에서 읽어 한 번만 저장한다 (응답 형식: target:unpatched).
+    run_demo.py 가 세 모드를 같은 로그 파일에 쌓으므로, 기록이 어느 모드 것인지 구분하려면 필요하다."""
+    global TARGET_MODE
+    if TARGET_MODE:
+        return TARGET_MODE
+    try:
+        st, _, body = forward(config.TARGET_PORT, "GET", "/__health", None, {})
+        if st == 200:
+            TARGET_MODE = body.decode("utf-8", "replace").split(":")[-1]
+    except Exception:
+        pass                                    # 타깃이 아직 안 떴으면 다음 요청에서 다시 읽는다
+    return TARGET_MODE or "unknown"
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
@@ -125,9 +150,14 @@ class H(BaseHTTPRequestHandler):
             port = PINNED[sid]
             st, rh, body = forward(port, method, self.path, raw, hdr)
             dlog("route", session=sid, to="decoy", status=st, replay=True)
-        dlog("request", session=sid, method=method, path=self.path,     # 공격자 행위 로그
-             to="decoy" if port != config.TARGET_PORT else "target",
-             status=st, resp_len=len(body), leaks=count_leaks(body), **req_fields(raw))
+        f = req_fields(raw)
+        to_decoy = port != config.TARGET_PORT
+        # 미끼로 갔거나, 위반 입력이거나, 서버가 못 읽는 형식일 때만 남긴다.
+        # 정상 사용자 요청과 내부 경로(/__)는 제외한다.
+        if not self.path.startswith("/__") and (to_decoy or f.get("over", 0) > 0 or f.get("malformed")):
+            alog("request", session=sid, mode=target_mode(), method=method, path=self.path,
+                 to="decoy" if to_decoy else "target",
+                 status=st, resp_len=len(body), leaks=count_leaks(body), **f)
         touch(sid)                                        # 미끼 고정 세션이면 마지막 요청 시각 갱신
         self._reply(st, body, rh)                         # 내부 헤더(X-HP-*)는 제거됨
 
@@ -142,6 +172,7 @@ def main():
     ap.add_argument("--port", type=int, default=config.PROXY_PORT)
     a = ap.parse_args()
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(ATTACK_LOG_PATH), exist_ok=True)
     pool.init(log=dlog)
     pool.start_all()                                   # 미끼 프로세스는 pool이 띄우고 관리
     threading.Thread(target=_reaper, daemon=True).start()   # 미끼 세션 타임아웃 감시
