@@ -2,6 +2,7 @@
 - 평소: 요청을 타깃으로 전달 (페이로드를 검사하지 않음)
 - 타깃이 /__hp/fork 요청 → 미끼 acquire → 상태 restore → 세션을 미끼에 고정
 - 타깃 응답에 X-HP-Forked 가 있으면 같은 요청을 미끼로 재전송(replay)
+- 요청마다 공격자 행위를 defender.jsonl 에 기록 (입력 길이, 응답 길이, 비밀 노출 수)
 원논문과 차이: 프로세스/TCP 연결 이전 대신 '상태 복원 + 요청 재전송'."""
 import argparse, json, os, signal, sys, threading, time, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +21,35 @@ def dlog(event, **kw):
     rec = {"t": round(time.time(), 4), "event": event, **kw}
     with LOCK, open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+SECRETS = config.real_secrets()          # 진짜 비밀 문자열 (노출 여부 판정용)
+
+def count_leaks(body):
+    """응답에 진짜 비밀이 몇 개 섞였는지 센다. 비밀 값 자체는 로그에 남기지 않는다."""
+    try:
+        text = body.decode("latin-1")
+    except Exception:
+        return None
+    return sum(1 for s in SECRETS if s in text)
+
+def req_fields(raw):
+    """공격자 요청에서 기록할 값만 뽑는다. 본문 전체는 남기지 않는다."""
+    if not raw:
+        return {}
+    out = {"body_len": len(raw)}
+    try:
+        msg = json.loads(raw)
+    except (ValueError, TypeError):
+        return out
+    if not isinstance(msg, dict):
+        return out
+    if "payload" in msg:
+        out["payload_len"] = len(str(msg["payload"]))
+    if isinstance(msg.get("length"), int):
+        out["declared_len"] = msg["length"]
+    if "payload_len" in out and "declared_len" in out:
+        out["over"] = out["declared_len"] - out["payload_len"]   # 0보다 크면 위반 입력
+    return out
 
 def touch(sid):
     with LOCK:
@@ -95,6 +125,9 @@ class H(BaseHTTPRequestHandler):
             port = PINNED[sid]
             st, rh, body = forward(port, method, self.path, raw, hdr)
             dlog("route", session=sid, to="decoy", status=st, replay=True)
+        dlog("request", session=sid, method=method, path=self.path,     # 공격자 행위 로그
+             to="decoy" if port != config.TARGET_PORT else "target",
+             status=st, resp_len=len(body), leaks=count_leaks(body), **req_fields(raw))
         touch(sid)                                        # 미끼 고정 세션이면 마지막 요청 시각 갱신
         self._reply(st, body, rh)                         # 내부 헤더(X-HP-*)는 제거됨
 
