@@ -17,8 +17,8 @@
 ## 설치
 
 ```bash
-git clone <저장소 주소>
-cd <저장소 이름>
+git clone <https://github.com/jeonminki0/honey-patches-team1.git>
+cd <honey-patches-team1>
 ```
 
 별도 설치는 없다. 명령어는 환경에 따라 `python`(Windows는 `py`, macOS는 `python3`)으로 바꿔 쓴다.
