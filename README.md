@@ -9,8 +9,8 @@
 
 ## 실행 환경
 
-- OS: Linux (Ubuntu 24.04 / WSL2에서 확인). macOS·Windows PowerShell은 아직 확인 전 (아래 "알려진 문제" 참고)
-- 언어·버전: Python 3.8 이상 (3.12에서 확인)
+- OS: Linux (Ubuntu 24.04 / WSL2), Windows 11 (네이티브), macOS (Apple Silicon)에서 확인 (아래 "재현 기록" 참고). Windows는 종료 후 미끼 프로세스가 남는 문제가 있음 (아래 "알려진 문제" 참고)
+- 언어·버전: Python 3.8 이상 (3.12·3.13·3.15에서 확인)
 - 필요한 패키지: 없음 (표준 라이브러리만 사용)
 - 사용 포트: 8080(프록시), 9000(타깃), 9101·9102(미끼). 바꾸려면 `honeypatch/config.py` 수정
 
@@ -32,7 +32,7 @@ python3 demo/run_demo.py
 ```
 
 - 마지막 줄에 `15/15 통과`가 나오면 정상
-- 결과 파일: `results/compare.md`(비교표·PASS/FAIL), `results/raw_results.json`, `logs/defender.jsonl`(방어자 내부 로그)
+- 결과 파일: `results/compare.md`(비교표·PASS/FAIL), `results/raw_results.json`, `logs/defender.jsonl`(방어자 내부 로그), `logs/attacker.jsonl`(공격자 행위 로그)
 
 **수동 실행**: 공격자·정상 사용자 입장에서 요청을 하나씩 보내 본다. 터미널을 따로 띄워 각각 실행한다.
 
@@ -91,6 +91,7 @@ python3 tests/decoy_pool/check_timeout.py   # DECOY_TIMEOUT 후 자동 release (
 | LXC 컨테이너 풀 + overlayfs 재생성 | 로컬 프로세스 2개 풀. release할 때 프로세스를 종료하고 같은 포트로 다시 띄움(빈 상태로 시작) |
 | 미끼 컨테이너 수명 정책 | 고정 세션이 `DECOY_TIMEOUT`(30초) 동안 요청이 없으면 자동 release |
 | 미끼 파일시스템에 허니파일 배치 | `GET /files/<이름>`으로 `decoy_template/` 파일 제공 (형식은 같고 값만 가짜) |
+| 미끼 안에서 공격자 행위 감시·수집 | 프록시가 미끼로 간 요청, 위반 입력, 형식 오류 요청만 `logs/attacker.jsonl`에 기록 (모드, 입력·응답 길이(바이트), 상태, 진짜 비밀 노출 개수). 요청 본문과 비밀 값은 저장하지 않고, `/__` 내부 경로는 기록하지 않음 |
 
 ## 참고 자료
 
@@ -109,7 +110,7 @@ honeypatch/config.py   포트, 시드 사용자(진짜 비밀), DECOY_TIMEOUT
 honeypatch/hp.py       hp_init / hp_fork / hp_skip   (논문 §3, Listing 2·3)
 honeypatch/redact.py   같은 길이·형식의 가짜 값으로 비밀 치환 (논문 §4.1)
 server/app.py          취약 서버 /heartbeat, GET /files/<이름>, --mode unpatched|patched|honeypatched, --role target|decoy
-proxy/proxy.py         리버스 프록시 + 세션 고정 + 세션 타임아웃 감시 (논문 §3)
+proxy/proxy.py         리버스 프록시 + 세션 고정 + 세션 타임아웃 감시 + 공격자 행위 로그 (논문 §3)
 proxy/pool.py          미끼 풀: 미끼 프로세스 기동·acquire·release(destroy → clone → start)
 data/                  타깃이 주는 진짜 파일 (config.txt, users.csv)
 decoy_template/        미끼가 주는 같은 형식의 가짜 파일 (허니파일, 실제 비밀 없음)
@@ -117,6 +118,9 @@ demo/fixed_cases.json  11주차 고정 검증 사례 3종 (수정 금지)
 demo/run_demo.py       3모드 × 3사례 실행, 비교표·판정
 demo/client.py         수동 요청 CLI
 tests/decoy_pool/      미끼 풀 단위 확인 스크립트 (release, 타임아웃, 허니파일)
+logs/defender.jsonl    방어자 내부 로그: fork·route·release·timeout (실행 시 생성, git 제외)
+logs/attacker.jsonl    공격자 행위 로그: 미끼로 간 요청·위반 입력·형식 오류 요청 (실행 시 생성, git 제외)
+results/               compare.md(비교표·판정), raw_results.json (실행 시 생성, git 제외)
 ```
 
 ### 동작 흐름 (허니패치 모드, 위반 입력)
@@ -134,21 +138,37 @@ tests/decoy_pool/      미끼 풀 단위 확인 스크립트 (release, 타임아
 - [x] 3모드 서버, hp 라이브러리, redaction, 프록시 fork·세션 고정, 고정 사례 자동 판정
 - [x] 미끼 release·재생성, 세션 타임아웃
 - [x] 미끼 허니파일
-- [ ] 미끼 안 공격자 행위 로그
+- [x] 공격자 행위 로그 (프록시에서 기록, `logs/attacker.jsonl`)
 - [ ] `run_demo.py` 시작 전 포트 사용 여부 확인
 - [ ] (선택) Docker 컨테이너로 미끼 격리, CRIU 시도
 - [ ] 14주차 변수 실험: redaction 켬/끔에 따른 공격자 응답 시간
 
 ### 알려진 문제
 
-- **Windows 미확인**: Windows에서는 `terminate()`가 프록시를 바로 강제 종료하므로, 프록시가 띄운 미끼가 정리되지 않고 남아 다음 실행 때 포트가 충돌할 수 있다.
+- **Windows에서 미끼 프로세스가 남음 (재현됨, Windows 11 / Python 3.13)**: Windows의 `terminate()`는 종료 신호 없이 프록시를 바로 죽이므로, 프록시가 띄운 미끼가 정리되지 않는다. `run_demo.py` 한 번 실행 후 미끼 6개가 남아 9101·9102 포트를 점유했다. 다음 실행 전에 PowerShell에서 정리한다.
+
+  ```powershell
+  # 9101·9102를 점유한 프로세스 종료
+  Get-NetTCPConnection -LocalPort 9101,9102 -State Listen -ErrorAction SilentlyContinue |
+    ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+  # 포트를 잡지 못한 채 남은 미끼까지 정리
+  Get-CimInstance Win32_Process -Filter "Name LIKE 'python%' OR Name LIKE 'py.exe'" |
+    Where-Object { $_.CommandLine -match 'server[\\/]app\.py.*--role decoy' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+  ```
+
+  (Windows에서 실행 검증 전)
+
+  cmd에서는 `netstat -ano | findstr :9101`로 PID를 확인한 뒤 `taskkill /PID <PID> /F`로 종료한다.
 - **타임아웃 직후 요청이 끊길 수 있음**: 타임아웃이 되면 세션 고정을 먼저 풀고 미끼를 재생성한다. 그 순간 그 미끼로 가던 요청이 있으면 연결이 끊길 수 있다. 이후 요청은 정상적으로 타깃으로 간다.
 - **이전 실행의 프록시가 남아 있으면 결과가 틀어짐**: `run_demo.py`는 포트가 이미 쓰이고 있어도 응답만 오면 기동된 것으로 본다. 남은 프록시(이전 세션 고정 상태 포함)와 통신하면 FAIL이 나온다(실제로 12/15 발생). 데모 전에 `proxy.py`·`app.py` 프로세스가 남아 있지 않은지 확인하고, 프록시는 일반 종료(Ctrl+C, `kill`)로 끈다.
+- **`logs/attacker.jsonl`은 실행마다 누적됨**: `run_demo.py`는 `defender.jsonl`만 새로 만든다. 기록의 `mode`로 모드는 구분되지만 어느 실행의 기록인지는 `t`(시각)로 구분해야 한다.
 
 ### 재현 기록
 
 | 팀원 | OS | Python | 결과 | 메모 |
 |---|---|---|---|---|
-| 우지민 | Ubuntu (WSL2) |  | 15/15 통과 | 작성자 환경 |
+| 우지민 | Ubuntu (WSL2) | 3.12.3 | 15/15 통과 | 작성자 환경 |
 | 김태우 | Ubuntu 24.04 (WSL2) | 3.12.3 | 15/15 통과 | 실행 후 잔류 프로세스·포트 점유 없음 |
 | 김영석 | Windows 11 (네이티브) | 3.13.14 | 15/15 통과 | 종료 후 미끼 6개 잔류(9101, 9102 점유). PID 지정 종료 필요 |
+| 이현우 | macOS (Apple Silicon) | 3.15.2 | 15/15 통과 | 확인 스크립트 3종 통과(6/6, 5/5, 6/6), README 수동 실행 정상, 종료 후 잔류 프로세스·포트 점유 없음 |
