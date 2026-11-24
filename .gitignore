@@ -5,3 +5,4 @@ results/raw_results.json
 .venv/
 *:Zone.Identifier
 results/compare.md
+results/extra_results.md

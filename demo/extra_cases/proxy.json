@@ -1,0 +1,35 @@
+{
+  "_note": "담당: 김영석 (proxy/proxy.py). 형식은 demo/extra_cases/README.md 참고. expect는 실행 전에 '올바른 동작'으로 적는다.",
+  "cases": [
+    {
+      "id": "C2-health-fingerprint", "owner": "김영석", "direction": "기만 유지(미끼 식별)",
+      "description": "미끼에 고정된 공격자가 GET /__health를 보내면 정상 사용자와 다른 응답(decoy:...)을 받아 미끼임을 알 수 있는지 본다. 1단계 정상 사용자 응답과 3단계 공격자 응답이 같아야 한다. 근거: evidence/before/c_health_fingerprint.md",
+      "written_before_run": true,
+      "modes": ["honeypatched"],
+      "steps": [
+        {"session": "user-normal", "method": "GET", "path": "/__health", "headers": {}, "target": "proxy"},
+        {"session": "attacker-1", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 200, "forks": 1, "leaks": 0}}},
+        {"session": "attacker-1", "method": "GET", "path": "/__health", "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "honeypatched": {"same_as_step": 1}
+      }
+    },
+    {
+      "id": "C3-restore-external", "owner": "김영석", "direction": "내부 API 노출",
+      "description": "미끼에 고정된 공격자가 외부에서 POST /__hp/restore를 보내 미끼 상태를 덮어쓸 수 있는지 본다. 외부 요청은 미끼에 도달하지 않아야 하고(404), 이후 공격 응답은 64바이트를 유지해야 한다. 근거: evidence/before/d_restore_overwrite.md",
+      "written_before_run": true,
+      "modes": ["honeypatched"],
+      "steps": [
+        {"session": "attacker-1", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy"},
+        {"session": "attacker-1", "method": "POST", "path": "/__hp/restore", "body": {"state": {"sessions": []}}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 404}}},
+        {"session": "attacker-1", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "honeypatched": {"status": 200, "len": 64, "leaks": 0, "route": "decoy"}
+      }
+    }
+  ]
+}

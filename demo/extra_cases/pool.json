@@ -1,0 +1,19 @@
+{
+  "_note": "담당: 우지민 (proxy/pool.py). 아래는 형식 예시다. 실제 사례를 추가할 때는 id를 C번호로 바꾸고 docs/counterexamples.md에도 적는다.",
+  "cases": [
+    {
+      "id": "EX-pool-followup-decoy", "owner": "우지민", "direction": "형식 예시(여러 단계)",
+      "description": "형식 예시. 공격 후 같은 세션의 정상 요청도 미끼로 가는지 본다. 중간 단계 확인은 step 안의 expect로, 최종 확인은 바깥 expect로 적는다.",
+      "written_before_run": true,
+      "modes": ["honeypatched"],
+      "steps": [
+        {"session": "attacker-p", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 200, "forks": 1, "leaks": 0}}},
+        {"session": "attacker-p", "method": "POST", "path": "/heartbeat", "body": {"payload": "ping", "length": 4}, "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "honeypatched": {"status": 200, "len": 4, "forks": 0, "route": "decoy"}
+      }
+    }
+  ]
+}
