@@ -1,0 +1,786 @@
+{
+  "a": [
+    {
+      "label": "a: hello / length -1",
+      "mode": "unpatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-a",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": -1}",
+      "status": 200,
+      "resp_len": 107,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "hello9f2c4e81a7b3d065|alice|10.0.0.23;51d8e0c29b7fa364|bob|172.16.4.150;0000000000000000|attacker|127.0.0.1",
+      "defender": [
+        {
+          "t": 1795508193.362,
+          "event": "route",
+          "session": "attacker-a",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "a: hello / length -1",
+      "mode": "patched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-a",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": -1}",
+      "status": 200,
+      "resp_len": 107,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "hello9f2c4e81a7b3d065|alice|10.0.0.23;51d8e0c29b7fa364|bob|172.16.4.150;0000000000000000|attacker|127.0.0.1",
+      "defender": [
+        {
+          "t": 1795508193.7304,
+          "event": "route",
+          "session": "attacker-a",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "a: hello / length -1",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-a",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": -1}",
+      "status": 200,
+      "resp_len": 107,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "hello9f2c4e81a7b3d065|alice|10.0.0.23;51d8e0c29b7fa364|bob|172.16.4.150;0000000000000000|attacker|127.0.0.1",
+      "defender": [
+        {
+          "t": 1795508194.0954,
+          "event": "route",
+          "session": "attacker-a",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    }
+  ],
+  "b": [
+    {
+      "label": "b: hello / length 0",
+      "mode": "unpatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-b",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": 0}",
+      "status": 200,
+      "resp_len": 0,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "",
+      "defender": [
+        {
+          "t": 1795508194.4712,
+          "event": "route",
+          "session": "attacker-b",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "b: hello / length 0",
+      "mode": "patched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-b",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": 0}",
+      "status": 200,
+      "resp_len": 0,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "",
+      "defender": [
+        {
+          "t": 1795508194.8427,
+          "event": "route",
+          "session": "attacker-b",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "b: hello / length 0",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-b",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": 0}",
+      "status": 200,
+      "resp_len": 0,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "",
+      "defender": [
+        {
+          "t": 1795508195.2148,
+          "event": "route",
+          "session": "attacker-b",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    }
+  ],
+  "c": [
+    {
+      "label": "정상 사용자 /__health (비교용)",
+      "mode": "honeypatched",
+      "method": "GET",
+      "path": "/__health",
+      "session": "user-normal",
+      "via": "proxy:8080",
+      "request": null,
+      "status": 200,
+      "resp_len": 19,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "target:honeypatched",
+      "defender": [
+        {
+          "t": 1795508195.5747,
+          "event": "route",
+          "session": "user-normal",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "attacker-1 공격 hi/64",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-1",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hi\", \"length\": 64}",
+      "status": 200,
+      "resp_len": 64,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hib2e6aa774236a41e|cqe4a|22.5.5.58;e5474fdfbcb81117|ah6|241.97.0",
+      "defender": [
+        {
+          "t": 1795508195.7166,
+          "event": "fork_ok",
+          "session": "attacker-1",
+          "decoy": 9101
+        },
+        {
+          "t": 1795508195.7175,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "target",
+          "status": 200
+        },
+        {
+          "t": 1795508195.7186,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "decoy",
+          "status": 200,
+          "replay": true
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508195.7197,
+          "event": "request",
+          "session": "attacker-1",
+          "mode": "honeypatched",
+          "method": "POST",
+          "path": "/heartbeat",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 64,
+          "leaks": 0,
+          "body_len": 31,
+          "payload_len": 2,
+          "declared_len": 64,
+          "over": 62
+        }
+      ]
+    },
+    {
+      "label": "attacker-1 /__health",
+      "mode": "honeypatched",
+      "method": "GET",
+      "path": "/__health",
+      "session": "attacker-1",
+      "via": "proxy:8080",
+      "request": null,
+      "status": 200,
+      "resp_len": 18,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "decoy:honeypatched",
+      "defender": [
+        {
+          "t": 1795508195.8258,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "decoy",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    }
+  ],
+  "d": [
+    {
+      "label": "고정 안 된 세션의 /__hp/restore (비교용)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/__hp/restore",
+      "session": "user-z",
+      "via": "proxy:8080",
+      "request": "{\"state\": {\"sessions\": []}}",
+      "status": 404,
+      "resp_len": 9,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "not found",
+      "defender": [
+        {
+          "t": 1795508196.1905,
+          "event": "route",
+          "session": "user-z",
+          "to": "target",
+          "status": 404
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "attacker-1 공격 hi/64 (1차)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-1",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hi\", \"length\": 64}",
+      "status": 200,
+      "resp_len": 64,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hi47f1f1142896bfb3|bdr6f|33.1.7.64;4b06446639f2e8ba|0l5|220.85.2",
+      "defender": [
+        {
+          "t": 1795508196.3318,
+          "event": "fork_ok",
+          "session": "attacker-1",
+          "decoy": 9101
+        },
+        {
+          "t": 1795508196.3327,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "target",
+          "status": 200
+        },
+        {
+          "t": 1795508196.3339,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "decoy",
+          "status": 200,
+          "replay": true
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508196.335,
+          "event": "request",
+          "session": "attacker-1",
+          "mode": "honeypatched",
+          "method": "POST",
+          "path": "/heartbeat",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 64,
+          "leaks": 0,
+          "body_len": 31,
+          "payload_len": 2,
+          "declared_len": 64,
+          "over": 62
+        }
+      ]
+    },
+    {
+      "label": "attacker-1 /__hp/restore 빈 세션",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/__hp/restore",
+      "session": "attacker-1",
+      "via": "proxy:8080",
+      "request": "{\"state\": {\"sessions\": []}}",
+      "status": 200,
+      "resp_len": 8,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "restored",
+      "defender": [
+        {
+          "t": 1795508196.4411,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "decoy",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "attacker-1 공격 hi/64 (2차)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-1",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hi\", \"length\": 64}",
+      "status": 200,
+      "resp_len": 38,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hi0000000000000000|attacker|127.0.0.1;",
+      "defender": [
+        {
+          "t": 1795508196.5478,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "decoy",
+          "status": 200
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508196.5481,
+          "event": "request",
+          "session": "attacker-1",
+          "mode": "honeypatched",
+          "method": "POST",
+          "path": "/heartbeat",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 38,
+          "leaks": 0,
+          "body_len": 31,
+          "payload_len": 2,
+          "declared_len": 64,
+          "over": 62
+        }
+      ]
+    }
+  ],
+  "e": [
+    {
+      "label": "공격 전: 타깃 직접 user-x hello/-1 (메모리 읽기)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-x",
+      "via": "target direct:9000",
+      "request": "{\"payload\": \"hello\", \"length\": -1}",
+      "status": 200,
+      "resp_len": 105,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "hello9f2c4e81a7b3d065|alice|10.0.0.23;51d8e0c29b7fa364|bob|172.16.4.150;0000000000000000|user-x|127.0.0.1",
+      "defender": [],
+      "attacker": []
+    },
+    {
+      "label": "attacker-1 공격 hi/64 (프록시 경유)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "attacker-1",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hi\", \"length\": 64}",
+      "status": 200,
+      "resp_len": 64,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hi50b82aca3572a2bb|4ir5b|45.1.9.54;b83a58a9490cd4a5|cd4|247.81.6",
+      "defender": [
+        {
+          "t": 1795508197.0539,
+          "event": "fork_ok",
+          "session": "attacker-1",
+          "decoy": 9101
+        },
+        {
+          "t": 1795508197.0547,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "target",
+          "status": 200
+        },
+        {
+          "t": 1795508197.056,
+          "event": "route",
+          "session": "attacker-1",
+          "to": "decoy",
+          "status": 200,
+          "replay": true
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508197.0571,
+          "event": "request",
+          "session": "attacker-1",
+          "mode": "honeypatched",
+          "method": "POST",
+          "path": "/heartbeat",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 64,
+          "leaks": 0,
+          "body_len": 31,
+          "payload_len": 2,
+          "declared_len": 64,
+          "over": 62
+        }
+      ]
+    },
+    {
+      "label": "공격 후: 타깃 직접 user-x hello/-1 (메모리 읽기)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-x",
+      "via": "target direct:9000",
+      "request": "{\"payload\": \"hello\", \"length\": -1}",
+      "status": 200,
+      "resp_len": 141,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "hello9f2c4e81a7b3d065|alice|10.0.0.23;51d8e0c29b7fa364|bob|172.16.4.150;0000000000000000|user-x|127.0.0.1;0000000000000000|attacker|127.0.0.1",
+      "defender": [],
+      "attacker": []
+    },
+    {
+      "label": "지시한 요청: 타깃 직접 user-x hi/200",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-x",
+      "via": "target direct:9000",
+      "request": "{\"payload\": \"hi\", \"length\": 200}",
+      "status": 200,
+      "resp_len": 0,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {
+        "X-HP-Forked": "1"
+      },
+      "body": "",
+      "defender": [
+        {
+          "t": 1795508197.2668,
+          "event": "fork_ok",
+          "session": "user-x",
+          "decoy": 9102
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "지시한 요청 이후: 타깃 직접 user-x hello/-1",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-x",
+      "via": "target direct:9000",
+      "request": "{\"payload\": \"hello\", \"length\": -1}",
+      "status": 200,
+      "resp_len": 141,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "hello9f2c4e81a7b3d065|alice|10.0.0.23;51d8e0c29b7fa364|bob|172.16.4.150;0000000000000000|user-x|127.0.0.1;0000000000000000|attacker|127.0.0.1",
+      "defender": [],
+      "attacker": []
+    }
+  ],
+  "f": [
+    {
+      "label": "진짜 user-normal 정상 요청 (사칭 전)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-normal",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": 5}",
+      "status": 200,
+      "resp_len": 5,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hello",
+      "defender": [
+        {
+          "t": 1795508197.7442,
+          "event": "route",
+          "session": "user-normal",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "진짜 user-normal 파일 (사칭 전)",
+      "mode": "honeypatched",
+      "method": "GET",
+      "path": "/files/users.csv",
+      "session": "user-normal",
+      "via": "proxy:8080",
+      "request": null,
+      "status": 200,
+      "resp_len": 99,
+      "leaks": 6,
+      "leaked": [
+        "9f2c4e81a7b3d065",
+        "alice",
+        "10.0.0.23",
+        "51d8e0c29b7fa364",
+        "bob",
+        "172.16.4.150"
+      ],
+      "headers": {},
+      "body": "sid,user,token,ip\ns-alice,alice,9f2c4e81a7b3d065,10.0.0.23\ns-bob,bob,51d8e0c29b7fa364,172.16.4.150\n",
+      "defender": [
+        {
+          "t": 1795508197.8541,
+          "event": "route",
+          "session": "user-normal",
+          "to": "target",
+          "status": 200
+        }
+      ],
+      "attacker": []
+    },
+    {
+      "label": "attacker-9 가 X-Session-Id=user-normal 로 공격 hi/64",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-normal",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hi\", \"length\": 64}",
+      "status": 200,
+      "resp_len": 64,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hie4627646329147c2|8tm90|67.5.5.71;03708d8bc0566589|8q2|201.47.1",
+      "defender": [
+        {
+          "t": 1795508197.9928,
+          "event": "fork_ok",
+          "session": "user-normal",
+          "decoy": 9101
+        },
+        {
+          "t": 1795508197.9939,
+          "event": "route",
+          "session": "user-normal",
+          "to": "target",
+          "status": 200
+        },
+        {
+          "t": 1795508197.9949,
+          "event": "route",
+          "session": "user-normal",
+          "to": "decoy",
+          "status": 200,
+          "replay": true
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508197.9959,
+          "event": "request",
+          "session": "user-normal",
+          "mode": "honeypatched",
+          "method": "POST",
+          "path": "/heartbeat",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 64,
+          "leaks": 0,
+          "body_len": 31,
+          "payload_len": 2,
+          "declared_len": 64,
+          "over": 62
+        }
+      ]
+    },
+    {
+      "label": "진짜 user-normal 정상 요청 (사칭 후)",
+      "mode": "honeypatched",
+      "method": "POST",
+      "path": "/heartbeat",
+      "session": "user-normal",
+      "via": "proxy:8080",
+      "request": "{\"payload\": \"hello\", \"length\": 5}",
+      "status": 200,
+      "resp_len": 5,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "hello",
+      "defender": [
+        {
+          "t": 1795508198.1021,
+          "event": "route",
+          "session": "user-normal",
+          "to": "decoy",
+          "status": 200
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508198.1024,
+          "event": "request",
+          "session": "user-normal",
+          "mode": "honeypatched",
+          "method": "POST",
+          "path": "/heartbeat",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 5,
+          "leaks": 0,
+          "body_len": 33,
+          "payload_len": 5,
+          "declared_len": 5,
+          "over": 0
+        }
+      ]
+    },
+    {
+      "label": "진짜 user-normal 파일 (사칭 후)",
+      "mode": "honeypatched",
+      "method": "GET",
+      "path": "/files/users.csv",
+      "session": "user-normal",
+      "via": "proxy:8080",
+      "request": null,
+      "status": 200,
+      "resp_len": 99,
+      "leaks": 0,
+      "leaked": [],
+      "headers": {},
+      "body": "sid,user,token,ip\ns-marta,marta,19cdb835c44c1b84,31.8.6.47\ns-dan,dan,8be66df143ee56d5,198.23.7.204\n",
+      "defender": [
+        {
+          "t": 1795508198.2097,
+          "event": "route",
+          "session": "user-normal",
+          "to": "decoy",
+          "status": 200
+        }
+      ],
+      "attacker": [
+        {
+          "t": 1795508198.2098,
+          "event": "request",
+          "session": "user-normal",
+          "mode": "honeypatched",
+          "method": "GET",
+          "path": "/files/users.csv",
+          "to": "decoy",
+          "status": 200,
+          "resp_len": 99,
+          "leaks": 0
+        }
+      ]
+    }
+  ]
+}
