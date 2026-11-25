@@ -150,9 +150,11 @@ class H(BaseHTTPRequestHandler):
             # /__health 로 미끼 정체가 드러나고(원논문 7절의 환경 차이 탐지),
             # /__hp/restore 로 공격자가 미끼 상태를 덮어쓸 수 있다.
             # 타깃이 모르는 경로에 주는 것과 똑같은 404 로 답해 구분되지 않게 한다.
+            # Content-Type 까지 타깃의 404 와 같게 맞춘다(server/app.py 의 _send 기본값).
+            # 본문만 같고 헤더가 없으면 헤더로 구분된다.
             dlog("blocked", session=self.headers.get("X-Session-Id", "anonymous"),
                  method=method, path=self.path)
-            return self._reply(404, b"not found")
+            return self._reply(404, b"not found", {"Content-Type": "application/octet-stream"})
         sid = self.headers.get("X-Session-Id", "anonymous")
         hdr = {"X-Session-Id": sid, "Content-Type": self.headers.get("Content-Type", "application/json")}
         port = PINNED.get(sid, config.TARGET_PORT)
