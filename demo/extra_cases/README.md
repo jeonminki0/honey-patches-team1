@@ -6,7 +6,7 @@
 |---|---|---|
 | `server.json` | 전민기 | `server/app.py` |
 | `proxy.json` | 김영석 | `proxy/proxy.py` |
-| `redact.json` | 이현우 | `honeypatch/` |
+| `redact.json` | 이현우 | redaction (`honeypatch/redact.py`) |
 | `pool.json` | 우지민 | `proxy/pool.py` |
 | `demo.json` | 김태우 | `demo/` |
 

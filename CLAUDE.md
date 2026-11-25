@@ -55,9 +55,10 @@ python demo/run_extra.py     # 13주차 추가 사례(반례 탐색) 실행 → 
    |---|---|
    | 전민기 | `server/app.py`, `honeypatch/hp.py` |
    | 김영석 | `proxy/proxy.py` |
-   | 우지민 | `proxy/pool.py`, `decoy_template/` |
-   | 이현우 | `honeypatch/redact.py` |
-   | 김태우 | `demo/`, `README.md` |
+   | 우지민 | `proxy/pool.py`, `data/`, `decoy_template/`, `tests/decoy_pool/`, `.github/`, `CLAUDE.md`, `CONTRIBUTING.md` |
+   | 이현우 | `honeypatch/redact.py`, `honeypatch/config.py` (다른 사람은 설정값 추가만 가능, 추가했으면 PR에 명시) |
+   | 김태우 | `demo/`, `README.md`, `docs/counterexamples.md` (취합. 각 반례 행은 그 반례 담당자가 작성) |
+   | 각 반례 담당자 | `evidence/` (자기 반례의 수정 전·후 증거) |
 
    **브랜치는 Issue 하나에 하나**: 최신 main에서 만들고(`fix/…`, `case/…`, `docs/…`), PR 설명에 `Closes #번호`를 적고, merge 후 삭제한다.
 
