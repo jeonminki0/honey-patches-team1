@@ -30,6 +30,22 @@
       "expect": {
         "honeypatched": {"status": 200, "len": 64, "leaks": 0, "route": "decoy"}
       }
+    },
+    {
+      "id": "C8-fork-external", "owner": "김영석", "direction": "내부 API 노출(세션 고정·상태 주입)",
+      "description": "외부 클라이언트가 프록시에 POST /__hp/fork를 직접 보내 아무 세션(여기서는 user-normal)이나 미끼에 고정할 수 있는지 본다. 외부에서 온 fork는 404로 거부되어야 하고, 진짜 user-normal은 계속 타깃으로 가서 진짜 파일을 받아야 한다. 근거: evidence/before/i_c8_fork_external.md",
+      "written_before_run": true,
+      "modes": ["honeypatched"],
+      "steps": [
+        {"session": "user-normal", "method": "POST", "path": "/heartbeat", "body": {"payload": "hello", "length": 5}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 200, "route": "target"}}},
+        {"session": "anyone", "method": "POST", "path": "/__hp/fork", "body": {"session": "user-normal", "state": {"sessions": []}}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 404, "forks": 0}}},
+        {"session": "user-normal", "method": "GET", "path": "/files/users.csv", "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "honeypatched": {"status": 200, "route": "target", "body_contains": "s-alice"}
+      }
     }
   ]
 }
