@@ -31,8 +31,10 @@ def list_procs():
     else:
         cmd = ["ps", "-eo", "pid=,args="]
         sep = None
+    # errors="replace": 한국어 Windows(cp949)에서 무관한 프로세스 명령줄의 디코딩할 수 없는 바이트 때문에
+    # UnicodeDecodeError로 죽지 않게 한다. 찾는 문자열(app.py, --role decoy, 포트)은 모두 ASCII라 판정에는 영향 없음.
     out = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                         universal_newlines=True, check=False).stdout
+                         universal_newlines=True, errors="replace", check=False).stdout
     procs = []
     for line in out.splitlines():
         parts = line.strip().split(sep, 1)

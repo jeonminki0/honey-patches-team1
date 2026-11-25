@@ -52,5 +52,21 @@ python3 tests/decoy_pool/check_orphan.py    # FAIL이면 종료 코드 1. 끝에
 2. 프록시가 SIGKILL로 죽으면 운영체제가 프록시가 쥐고 있던 파이프의 쓰기 쪽을 닫는다. launcher는 stdin에서 EOF를 받고 미끼를 `terminate()`한 뒤 끝난다. 2초 안에 4개 모두 끝났고 포트도 비었다.
 3. 정상 경로도 같은 방식으로 정리된다. `pool.release()`와 `stop_all()`은 파이프를 닫고 기다리며, `STOP_TIMEOUT`(5초) 안에 안 끝날 때만 강제 종료한다(`decoy_force_kill` 로그). 이번 전체 실행(데모, 추가 사례, 확인 스크립트 4개)에서 강제 종료는 한 번도 쓰이지 않았다.
 4. `release()`의 destroy → clone → start와 `release` 로그는 그대로다. 로그의 `old_pid`·`new_pid`는 이제 미끼 서버가 아니라 launcher의 pid다.
-5. **Windows에서는 아직 확인하지 않았다.** Windows의 `terminate()`도 프록시를 즉시 끝내고 운영체제가 파이프 핸들을 닫으므로 같은 경로로 정리될 것으로 예상하지만, 실제 확인은 Windows 환경(김영석 님)에서 `python tests\decoy_pool\check_orphan.py`와 `python demo\run_demo.py` 후 잔류 확인으로 해야 한다.
+5. Windows 확인 결과는 아래 "Windows 확인" 절에 있다. `run_demo.py` 후 잔류는 0개로 확인됐고, `check_orphan.py` 판정은 재확인 대기다.
 6. 마지막 수단(파이프를 닫아도 launcher가 끝나지 않는 경우)은 일부러 재현하지 않아 실행으로 확인하지 못했다. POSIX에서는 SIGTERM 후 세션 전체 SIGKILL, Windows에서는 `taskkill /T /F`다.
+
+## Windows 확인 (김영석 님 실행, 결과 전달받음)
+
+- 환경: Windows 11 (네이티브), Python 3.13.14, `fix/c7-decoy-orphan` 브랜치
+
+| 확인 항목 | 수정 전 | 수정 후 | 판정 |
+|---|---|---|---|
+| `python demo\run_demo.py` | 15/15 | 15/15 | 유지 |
+| `run_demo.py` 실행 후 남은 미끼 프로세스 | **6개** (README 재현 기록) | **0개** | PASS |
+| 실행 후 9101·9102 LISTEN | 점유됨 | 없음 | PASS |
+| `python tests\decoy_pool\check_orphan.py` | - | **판정 전에 중단**: `UnicodeDecodeError` (cp949) | 재확인 대기 |
+
+- `check_orphan.py` 중단 원인: 프로세스 목록(PowerShell 출력)을 시스템 기본 인코딩(한국어 Windows는 cp949)으로 디코딩한다. 이때 미끼와 무관한 프로세스의 명령줄에 cp949로 디코딩할 수 없는 바이트가 있어 예외가 났다. **미끼 잔류 판정 이전 단계의 스크립트 문제이고, C7 수정 자체의 실패가 아니다.**
+- 조치: `subprocess.run(..., universal_newlines=True, errors="replace")`로 바꿔, 디코딩할 수 없는 바이트는 대체 문자로 바뀌고 실행이 계속되게 했다. 찾는 문자열(`app.py`, `--role decoy`, `decoy_launcher.py`, 포트 번호)은 모두 ASCII라 판정에 영향이 없다.
+- Linux에서 cp949 디코딩을 흉내 내 확인함: 0xff 바이트가 섞인 출력에서 `errors` 없이는 `UnicodeDecodeError: 'cp949' codec can't decode byte 0xff ... illegal multibyte sequence`, `errors="replace"`로는 디코딩에 성공하고 미끼 줄도 인식했다.
+- **남은 확인:** Windows에서 `python tests\decoy_pool\check_orphan.py`를 다시 실행해 `[PASS]`와 종료 코드 0인지 확인 (김영석 님).
