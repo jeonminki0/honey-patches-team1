@@ -6,8 +6,8 @@
 ## 1. 처음 한 번만: 저장소 받기와 실행 확인
 
 ```bash
-git clone <저장소 주소>
-cd <저장소 이름>
+git clone https://github.com/jeonminki0/honey-patches-team1.git
+cd honey-patches-team1
 python demo/run_demo.py        # Windows는 py, macOS/Linux는 python3 일 수 있음
 ```
 
@@ -15,35 +15,44 @@ python demo/run_demo.py        # Windows는 py, macOS/Linux는 python3 일 수 �
 - 결과는 [README.md](README.md) 맨 아래 **"재현 기록"** 표에 한 줄 추가해 주세요 (이름, OS, Python 버전, 결과).
 - 오류가 나면 코드를 고치지 말고, 오류 메시지를 그대로 팀 채팅방에 공유해 주세요.
 
-## 2. 브랜치: 각자 자기 브랜치를 만들어 작업
+## 2. 담당과 브랜치: Issue 하나에 브랜치 하나
 
-main에서 바로 작업하지 않습니다. 아래 이름 규칙으로 **각자 브랜치를 만들어** 작업해 주세요.
+| 담당 | 담당 파일 |
+|---|---|
+| 전민기 | `server/app.py`, `honeypatch/hp.py` |
+| 김영석 | `proxy/proxy.py` |
+| 우지민 | `proxy/pool.py`, `data/`, `decoy_template/`, `tests/decoy_pool/`, `.github/`, `CLAUDE.md`, `CONTRIBUTING.md` |
+| 이현우 | `honeypatch/redact.py`, `honeypatch/config.py` (다른 사람은 설정값 추가만 가능, 추가했으면 PR에 명시) |
+| 김태우 | `demo/`, `README.md`, `docs/counterexamples.md` (취합. 각 반례 행은 그 반례 담당자가 작성) |
+| 각 반례 담당자 | `evidence/` (자기 반례의 수정 전·후 증거) |
 
-| 담당 | 담당 파일 | 브랜치 이름 |
+main에서 바로 작업하지 않습니다. **Issue 하나마다 브랜치를 하나** 만들어 작업하고, merge되면 그 브랜치는 지웁니다.
+
+| 접두어 | 쓰는 경우 | 예시 |
 |---|---|---|
-| 팀원1 서버 | `server/app.py` | `feat/server` |
-| 팀원2 프록시 | `proxy/proxy.py` | `feat/proxy` |
-| 팀원3 hp·redaction | `honeypatch/` | `feat/honeypatch` |
-| 팀원4 데모·측정 | `demo/` | `feat/demo` |
-| 팀원5 문서 | `README.md`, 보고서 | `docs/readme` |
+| `fix/` | 반례·버그 수정 | `fix/negative-length` |
+| `case/` | 추가 사례(`demo/extra_cases/`) 작성 | `case/proxy-internal-path` |
+| `docs/` | 문서 | `docs/readme-week13` |
 
 ```bash
 git switch main
-git pull                          # 최신 main 받기
-git switch -c feat/proxy          # 내 브랜치 만들기 (이름은 위 표 참고)
-git push -u origin feat/proxy     # 처음 한 번만
+git pull                                  # 항상 최신 main에서 시작
+git switch -c fix/negative-length         # Issue에 맞는 브랜치 만들기
+git push -u origin fix/negative-length    # 처음 한 번만
 ```
 
 - 담당 파일 외의 파일을 고쳐야 하면, 먼저 해당 담당자에게 말해 주세요. 같은 파일을 동시에 고치면 충돌이 납니다.
+- merge 후 정리: `git switch main && git pull && git branch -d fix/negative-length` (원격 브랜치는 GitHub PR 화면의 "Delete branch" 또는 `git push origin --delete fix/negative-length`)
 
 ## 3. 작업 흐름
 
 ```bash
-git switch feat/proxy             # 내 브랜치에서
+git switch fix/negative-length    # Issue 브랜치에서
 # ... 작업 ...
-python demo/run_demo.py           # 실행해서 결과 확인
+python demo/run_demo.py           # 고정 사례 15/15 확인
+python demo/run_extra.py          # 추가 사례 결과 확인
 git add .
-git commit -m "feat: 미끼 release 추가"
+git commit -m "fix: 음수 length 거부"
 git push
 ```
 
@@ -65,7 +74,9 @@ git push
 - PR 올리기 전 체크:
   - [ ] 최신 main을 먼저 받아 충돌 해결: `git pull origin main`
   - [ ] `python demo/run_demo.py` 실행 결과 **15/15 통과**
+  - [ ] `python demo/run_extra.py` 결과(통과 수, 남은 FAIL 목록)
   - [ ] PR 설명에 **무엇을 바꿨는지 + 실행 결과(통과 수)** 붙이기
+  - [ ] PR 설명에 관련 Issue를 `Closes #번호`로 적기 (merge되면 Issue가 자동으로 닫힘)
 - **다른 팀원 1명**이 확인하고 merge합니다. 본인 PR을 본인이 merge하지 않습니다.
 
 ## 5. 절대 하지 않을 것
