@@ -1,0 +1,47 @@
+{
+  "_note": "담당: 전민기 (server/app.py). 형식은 demo/extra_cases/README.md 참고. expect는 실행 전에 '올바른 동작'으로 적는다.",
+  "cases": [
+    {
+      "id": "C1-negative-length", "owner": "전민기", "direction": "경계값",
+      "description": "선언 길이에 음수를 넣는다. 패치 조건(length > len(payload))을 통과하고, 파이썬 슬라이스 memory[:-1]이 힙 전체를 돌려준다. 근거: evidence/before/a_negative_length.md",
+      "written_before_run": true,
+      "modes": ["unpatched", "patched", "honeypatched"],
+      "steps": [
+        {"session": "attacker-neg", "method": "POST", "path": "/heartbeat", "body": {"payload": "hello", "length": -1}, "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "unpatched":    {"status": 200, "leaks": ">0", "route": "target"},
+        "patched":      {"status": 400, "leaks": 0, "forks": 0, "route": "target"},
+        "honeypatched": {"status": 200, "leaks": 0, "forks": 1, "route": "decoy"}
+      }
+    },
+    {
+      "id": "CTRL-zero-length", "owner": "전민기", "direction": "경계값(대조군)",
+      "description": "선언 길이 0. 위반이 아니므로 세 모드 모두 빈 응답이 정상. C1과 비교하는 대조군. 근거: evidence/before/b_zero_length.md",
+      "written_before_run": true,
+      "modes": ["unpatched", "patched", "honeypatched"],
+      "steps": [
+        {"session": "user-zero", "method": "POST", "path": "/heartbeat", "body": {"payload": "hello", "length": 0}, "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "unpatched":    {"status": 200, "len": 0, "leaks": 0, "forks": 0, "route": "target"},
+        "patched":      {"status": 200, "len": 0, "leaks": 0, "forks": 0, "route": "target"},
+        "honeypatched": {"status": 200, "len": 0, "leaks": 0, "forks": 0, "route": "target"}
+      }
+    },
+    {
+      "id": "C4-malformed-adds-session", "owner": "전민기", "direction": "상태 오염",
+      "description": "형식이 깨진 요청(length가 숫자가 아님)이 400으로 거부돼도 세션 테이블에 레코드가 추가되는지 본다. 세션 추가(ensure_session)는 모드와 무관한 코드라 힙을 그대로 읽을 수 있는 미패치 모드에서 관찰한다. 2단계는 큰 length로 힙 전체를 읽는 관찰용 요청. 근거: evidence/before/e_target_session_table.md",
+      "written_before_run": true,
+      "modes": ["unpatched"],
+      "steps": [
+        {"session": "ghost-1", "method": "POST", "path": "/heartbeat", "body": {"payload": "a", "length": "abc"}, "headers": {}, "target": "target_direct",
+         "expect": {"unpatched": {"status": 400}}},
+        {"session": "reader", "method": "POST", "path": "/heartbeat", "body": {"payload": "x", "length": 1000}, "headers": {}, "target": "target_direct"}
+      ],
+      "expect": {
+        "unpatched": {"status": 200, "body_not_contains": "ghost-1"}
+      }
+    }
+  ]
+}

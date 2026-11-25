@@ -79,3 +79,14 @@ git push
 - **막힌 점:** 오류가 나면 *입력, 실행 명령, 오류 메시지, 시도한 방법*을 PR이나 팀 채팅방에 남겨 주세요. 해결 못 한 오류도 기록 자체가 보고서 자료입니다.
 - **AI 활용:** AI(Claude, ChatGPT 등)를 썼다면 *무엇을 요청했는지, 어떻게 확인했는지, 무엇을 채택·수정했는지* 를 PR 설명에 한두 줄 적어 주세요.
 - **원논문과 다르게 구현한 부분:** README의 "원논문과의 차이" 표에 추가해 주세요.
+
+## 7. 13주차 규칙 (반례 탐색·수정)
+
+반례 목록은 [docs/counterexamples.md](docs/counterexamples.md), 추가 사례 형식은 [demo/extra_cases/README.md](demo/extra_cases/README.md)에 있습니다.
+
+1. **기대 결과는 실행 전에 씁니다.** `demo/extra_cases/<담당>.json`에 사례를 추가할 때 `expect`를 "올바른 동작"으로 먼저 적고 `written_before_run: true`로 표시한 뒤 실행합니다. 실행 결과를 보고 기대값을 고치지 않습니다.
+2. **고정 사례는 수정하지 않습니다.** `demo/fixed_cases.json`과 `demo/run_demo.py`의 판정은 그대로 두고, 새 사례는 `demo/extra_cases/`에만 추가합니다.
+3. **고치기 전에 `evidence/before/`부터 남깁니다.** 지금 코드로 `python3 demo/run_extra.py --case <id>`를 실행해 입력, 명령, 출력, 로그 발췌를 기록하고 커밋한 뒤 수정을 시작합니다.
+4. **고친 뒤 같은 입력으로 `evidence/after/`를 남깁니다.** 파일 이름과 형식을 수정 전과 맞추고, `docs/counterexamples.md`의 "처리"와 "수정 전·후" 칸을 갱신합니다.
+5. **PR에 AI가 작성한 부분과 직접 확인한 부분을 나눠 적습니다** ([PR 템플릿](.github/pull_request_template.md)). AI가 보고한 실행 결과를 그대로 옮기지 말고, 직접 실행한 명령과 결과를 따로 적습니다.
+6. PR 전 체크: `python3 demo/run_demo.py` **15/15**, `python3 demo/run_extra.py` 결과(통과 수와 남은 FAIL 목록)를 PR에 붙입니다.

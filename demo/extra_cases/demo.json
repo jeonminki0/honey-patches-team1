@@ -1,0 +1,19 @@
+{
+  "_note": "담당: 김태우 (demo/). 아래는 형식 예시다. 실제 사례를 추가할 때는 id를 C번호로 바꾸고 docs/counterexamples.md에도 적는다.",
+  "cases": [
+    {
+      "id": "EX-demo-target-direct", "owner": "김태우", "direction": "형식 예시(타깃 직접)",
+      "description": "형식 예시. target_direct는 프록시를 거치지 않고 타깃(9000)에 직접 보낸다. 프록시 로그가 없으므로 route는 판정할 수 없다.",
+      "written_before_run": true,
+      "modes": ["unpatched", "patched", "honeypatched"],
+      "steps": [
+        {"session": "user-direct", "method": "POST", "path": "/heartbeat", "body": {"payload": "hello", "length": 5}, "headers": {}, "target": "target_direct"}
+      ],
+      "expect": {
+        "unpatched":    {"status": 200, "len": 5, "leaks": 0, "body": "hello"},
+        "patched":      {"status": 200, "len": 5, "leaks": 0, "body": "hello"},
+        "honeypatched": {"status": 200, "len": 5, "leaks": 0, "body": "hello"}
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "_note": "담당: 이현우 (honeypatch/). 형식은 demo/extra_cases/README.md 참고. expect는 실행 전에 '올바른 동작'으로 적는다.",
+  "cases": [
+    {
+      "id": "C5-session-spoofing", "owner": "이현우", "direction": "세션 식별",
+      "description": "공격자(attacker-9)가 X-Session-Id 헤더를 user-normal로 바꿔 공격한 뒤, 진짜 user-normal의 요청이 어디로 가는지 본다. 진짜 사용자는 타깃으로 가서 진짜 파일을 받아야 한다. 지금 단계 구성으로는 HTTP 수준에서 둘을 구분할 정보가 헤더뿐이므로, 수정 방식(예: 프록시가 발급하는 세션 값)에 맞춰 1·3단계에 그 값을 추가할 수 있다. 기대 결과는 바꾸지 않는다. 근거: evidence/before/f_session_spoofing.md",
+      "written_before_run": true,
+      "modes": ["honeypatched"],
+      "steps": [
+        {"session": "user-normal", "method": "POST", "path": "/heartbeat", "body": {"payload": "hello", "length": 5}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 200, "route": "target"}}},
+        {"session": "user-normal", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {"X-Actor": "attacker-9"}, "target": "proxy"},
+        {"session": "user-normal", "method": "GET", "path": "/files/users.csv", "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "honeypatched": {"status": 200, "route": "target", "body_contains": "s-alice"}
+      }
+    }
+  ]
+}
