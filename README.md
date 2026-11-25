@@ -17,8 +17,8 @@
 ## 설치
 
 ```bash
-git clone <https://github.com/jeonminki0/honey-patches-team1.git>
-cd <honey-patches-team1>
+git clone https://github.com/jeonminki0/honey-patches-team1.git
+cd honey-patches-team1
 ```
 
 별도 설치는 없다. 명령어는 환경에 따라 `python`(Windows는 `py`, macOS는 `python3`)으로 바꿔 쓴다.
@@ -140,6 +140,8 @@ results/               compare.md(비교표·판정), raw_results.json (실행 �
 - [x] 미끼 허니파일
 - [x] 공격자 행위 로그 (프록시에서 기록, `logs/attacker.jsonl`)
 - [ ] `run_demo.py` 시작 전 포트 사용 여부 확인
+- [ ] Windows 종료 후 미끼 프로세스 잔류 수정
+- [ ] 외부 요청의 내부 경로(`/__*`) 차단 (`/__health` 미끼 정체 노출, `/__hp/restore` 외부 호출)
 - [ ] (선택) Docker 컨테이너로 미끼 격리, CRIU 시도
 - [ ] 14주차 변수 실험: redaction 켬/끔에 따른 공격자 응답 시간
 
@@ -156,13 +158,13 @@ results/               compare.md(비교표·판정), raw_results.json (실행 �
     Where-Object { $_.CommandLine -match 'server[\\/]app\.py.*--role decoy' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   ```
-
-  (Windows에서 실행 검증 전)
+  ※ 위 정리 명령은 Windows에서 아직 실행 확인 전
 
   cmd에서는 `netstat -ano | findstr :9101`로 PID를 확인한 뒤 `taskkill /PID <PID> /F`로 종료한다.
 - **타임아웃 직후 요청이 끊길 수 있음**: 타임아웃이 되면 세션 고정을 먼저 풀고 미끼를 재생성한다. 그 순간 그 미끼로 가던 요청이 있으면 연결이 끊길 수 있다. 이후 요청은 정상적으로 타깃으로 간다.
 - **이전 실행의 프록시가 남아 있으면 결과가 틀어짐**: `run_demo.py`는 포트가 이미 쓰이고 있어도 응답만 오면 기동된 것으로 본다. 남은 프록시(이전 세션 고정 상태 포함)와 통신하면 FAIL이 나온다(실제로 12/15 발생). 데모 전에 `proxy.py`·`app.py` 프로세스가 남아 있지 않은지 확인하고, 프록시는 일반 종료(Ctrl+C, `kill`)로 끈다.
 - **`logs/attacker.jsonl`은 실행마다 누적됨**: `run_demo.py`는 `defender.jsonl`만 새로 만든다. 기록의 `mode`로 모드는 구분되지만 어느 실행의 기록인지는 `t`(시각)로 구분해야 한다.
+- **내부 제어 경로가 외부에 열려 있음 (13주차 수정 예정)**: 미끼에 고정된 공격자가 `GET /__health`를 보내면 `decoy:honeypatched`가 돌아와 미끼임이 드러난다. 또 프록시가 외부에서 온 `/__hp/restore`를 미끼로 그대로 넘겨 공격자가 미끼 상태를 덮어쓸 수 있다.
 
 ### 재현 기록
 
