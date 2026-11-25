@@ -14,6 +14,24 @@
       "expect": {
         "honeypatched": {"status": 200, "len": 4, "forks": 0, "route": "decoy"}
       }
+    },
+    {
+      "id": "C6-pool-exhaustion", "owner": "우지민", "direction": "자원 고갈",
+      "description": "서로 다른 세션 3개가 정상적인 공격 요청(hi/64)을 연속으로 보내 미끼 풀(2개)을 고갈시킨다. 외부 /__hp/fork(C8)는 쓰지 않는다. 1·2단계는 미끼로 기만, 3단계는 풀이 비어 fork가 실패하므로 원래 패치의 거부(400)로 돌아가야 하고, 정상 사용자는 영향이 없어야 한다. 3단계의 defender.jsonl fork_fail(decoy pool empty)은 expect 항목이 없어 로그로 확인한다. 근거: evidence/before/h_c6_pool_exhaustion.md",
+      "written_before_run": true,
+      "modes": ["honeypatched"],
+      "steps": [
+        {"session": "attacker-1", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 200, "len": 64, "forks": 1, "route": "decoy", "leaks": 0}}},
+        {"session": "attacker-2", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 200, "len": 64, "forks": 1, "route": "decoy", "leaks": 0}}},
+        {"session": "attacker-3", "method": "POST", "path": "/heartbeat", "body": {"payload": "hi", "length": 64}, "headers": {}, "target": "proxy",
+         "expect": {"honeypatched": {"status": 400, "forks": 0, "route": "target", "leaks": 0}}},
+        {"session": "user-normal", "method": "POST", "path": "/heartbeat", "body": {"payload": "hello", "length": 5}, "headers": {}, "target": "proxy"}
+      ],
+      "expect": {
+        "honeypatched": {"status": 200, "body": "hello", "route": "target"}
+      }
     }
   ]
 }
