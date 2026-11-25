@@ -21,7 +21,7 @@ python demo/run_demo.py        # Windows는 py, macOS/Linux는 python3 일 수 �
 |---|---|
 | 전민기 | `server/app.py`, `honeypatch/hp.py` |
 | 김영석 | `proxy/proxy.py` |
-| 우지민 | `proxy/pool.py`, `data/`, `decoy_template/`, `tests/decoy_pool/`, `.github/`, `CLAUDE.md`, `CONTRIBUTING.md` |
+| 우지민 | `proxy/pool.py`, `proxy/decoy_launcher.py`, `data/`, `decoy_template/`, `tests/decoy_pool/`, `.github/`, `CLAUDE.md`, `CONTRIBUTING.md` |
 | 이현우 | `honeypatch/redact.py`, `honeypatch/config.py` (다른 사람은 설정값 추가만 가능, 추가했으면 PR에 명시) |
 | 김태우 | `demo/`, `README.md`, `docs/counterexamples.md` (취합. 각 반례 행은 그 반례 담당자가 작성) |
 | 각 반례 담당자 | `evidence/` (자기 반례의 수정 전·후 증거) |

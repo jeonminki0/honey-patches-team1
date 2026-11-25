@@ -24,6 +24,7 @@ python demo/run_extra.py     # 13주차 추가 사례(반례 탐색) 실행 → 
 | `server/app.py` | Heartbleed 구조를 흉내 낸 `/heartbeat`, `GET /files/<이름>`, `--mode`·`--role`, 미끼용 `/__hp/restore` | Listing 1·2 |
 | `proxy/proxy.py` | 리버스 프록시, 세션 고정(`PINNED`), `X-HP-Forked` 시 미끼로 재전송, 세션 타임아웃, `dlog()`(방어자 로그)·`alog()`(공격자 로그) | §3 Reverse Proxy |
 | `proxy/pool.py` | 미끼 풀: 미끼 프로세스 기동·`acquire()`·`release()`(destroy → clone → start) | §3 LXC Controller |
+| `proxy/decoy_launcher.py` | 미끼 감싸기: 미끼(`server/app.py`)를 자식으로 띄우고, 부모(프록시) 종료 시 미끼 정리 (C7) | — |
 | `data/`, `decoy_template/` | 타깃의 진짜 파일 / 미끼의 가짜 파일(허니파일) | — |
 | `demo/fixed_cases.json` | 11주차 고정 검증 사례 3종 (normal / violation / boundary) | — |
 | `demo/run_demo.py` | 서버·프록시 기동, 고정 사례 실행, 비교표·판정 | — |
@@ -33,6 +34,7 @@ python demo/run_extra.py     # 13주차 추가 사례(반례 탐색) 실행 → 
 | `docs/counterexamples.md` | 반례 목록 C1~ (입력, 실행 전 기대, 실제, 분류, 근거, 처리) | — |
 | `evidence/before/`, `evidence/after/` | 반례의 수정 전·후 증거 (같은 입력) | — |
 | `tests/decoy_pool/` | 미끼 풀 단위 확인 스크립트 (release, 타임아웃, 허니파일) | — |
+| `tests/decoy_pool/check_orphan.py` | 프록시 강제 종료 후 미끼 잔류 확인 (C7) | — |
 | `logs/attacker.jsonl` | 공격자 행위 로그 (미끼로 간 요청·위반 입력·형식 오류 요청, 실행 시 생성) | — |
 
 허니패치 흐름: 클라이언트 → 프록시 → 타깃 `/heartbeat`에서 `length > len(payload)` 탐지 → `hp_fork()`(상태 직렬화 + 공격자 외 비밀 redaction → 프록시 `/__hp/fork`) → 프록시가 미끼 acquire·restore·세션 고정 → 타깃은 `X-HP-Forked: 1`만 반환 → 프록시가 같은 요청을 미끼로 재전송 → 미끼에서 `hp_skip()`이 거부를 건너뛰고 가짜 비밀이 담긴 응답. fork 실패 시 타깃이 400으로 거부(일반 패치와 동일).
@@ -55,7 +57,7 @@ python demo/run_extra.py     # 13주차 추가 사례(반례 탐색) 실행 → 
    |---|---|
    | 전민기 | `server/app.py`, `honeypatch/hp.py` |
    | 김영석 | `proxy/proxy.py` |
-   | 우지민 | `proxy/pool.py`, `data/`, `decoy_template/`, `tests/decoy_pool/`, `.github/`, `CLAUDE.md`, `CONTRIBUTING.md` |
+   | 우지민 | `proxy/pool.py`, `proxy/decoy_launcher.py`, `data/`, `decoy_template/`, `tests/decoy_pool/`, `.github/`, `CLAUDE.md`, `CONTRIBUTING.md` |
    | 이현우 | `honeypatch/redact.py`, `honeypatch/config.py` (다른 사람은 설정값 추가만 가능, 추가했으면 PR에 명시) |
    | 김태우 | `demo/`, `README.md`, `docs/counterexamples.md` (취합. 각 반례 행은 그 반례 담당자가 작성) |
    | 각 반례 담당자 | `evidence/` (자기 반례의 수정 전·후 증거) |
