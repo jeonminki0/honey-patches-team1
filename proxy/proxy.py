@@ -145,6 +145,14 @@ class H(BaseHTTPRequestHandler):
         raw = self.rfile.read(int(self.headers.get("Content-Length", 0))) if method == "POST" else None
         if self.path == "/__hp/fork":
             return self._fork(raw)
+        if self.path.startswith("/__"):
+            # 내부 제어 경로는 밖으로 열지 않는다. 타깃이나 미끼로 넘기면
+            # /__health 로 미끼 정체가 드러나고(원논문 7절의 환경 차이 탐지),
+            # /__hp/restore 로 공격자가 미끼 상태를 덮어쓸 수 있다.
+            # 타깃이 모르는 경로에 주는 것과 똑같은 404 로 답해 구분되지 않게 한다.
+            dlog("blocked", session=self.headers.get("X-Session-Id", "anonymous"),
+                 method=method, path=self.path)
+            return self._reply(404, b"not found")
         sid = self.headers.get("X-Session-Id", "anonymous")
         hdr = {"X-Session-Id": sid, "Content-Type": self.headers.get("Content-Type", "application/json")}
         port = PINNED.get(sid, config.TARGET_PORT)
