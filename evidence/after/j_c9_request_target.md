@@ -94,7 +94,12 @@ python3 demo/run_extra.py --case C9-request-target
 
 ## 관찰
 
-1. **원인은 프록시가 요청 줄을 URL 로 다시 해석한 것이다.** 고치기 전 `forward()` 는 `f"http://{config.HOST}:{port}{path}"` 로 주소를 이어 붙여 urllib 에 넘겼다. 경로가 절대 URI 면 `http://127.0.0.1:9000http://127.0.0.1:9101/__health` 가 되어 `http.client.InvalidURL: nonnumeric port: '9000HTTP'` 가 났다. 이 예외는 `except urllib.error.HTTPError` 에 걸리지 않아 `_handle()` 밖으로 빠져나가고, 응답 없이 연결이 끊겼다.
+1. **원인은 프록시가 요청 줄을 URL 로 다시 해석한 것이다.** 고치기 전 `forward()` 는 `f"http://{config.HOST}:{port}{path}"` 로 주소를 이어 붙여 urllib 에 넘겼다. 깨지는 방식은 요청 줄에 따라 둘이다.
+
+    - 절대 URI: `http://127.0.0.1:9000http://127.0.0.1:9101/__health` 가 되고, `urlsplit` 이 netloc 을 `127.0.0.1:9000http:` 로 끊는다. 포트 자리가 비어 80 으로 떨어지고 `127.0.0.1:9000http` 가 호스트 이름이 되어, 이름을 찾다가 `urllib.error.URLError: <urlopen error [Errno 11001] getaddrinfo failed>` 가 난다 (errno 는 Windows 기준).
+    - 슬래시로 시작하지 않는 경로: `http://127.0.0.1:9000nope` 가 되어 포트 자리가 `9000nope` 가 되고 `http.client.InvalidURL: nonnumeric port: '9000nope'` 가 난다.
+
+    `HTTPError` 가 `URLError` 의 하위 클래스라서 `except urllib.error.HTTPError` 는 위 두 예외를 잡지 못한다. 그래서 `_handle()` 밖으로 빠져나가고 응답 없이 연결이 끊겼다.
 
 2. **연결이 끊기는 것 자체가 기만 실패다.** 같은 요청을 타깃에 직접 보내면 404 가 오는데 프록시는 끊었다. 미끼인지 타깃인지는 드러나지 않지만, 앞에 무언가 끼어 있다는 사실이 드러난다. 원논문 7절은 응답 시간, 컨테이너 환경 같은 탐지 경로를 다루는데, 이쪽은 프록시를 쓰지 않는 원논문에는 없는 축소 구현 문제다.
 
