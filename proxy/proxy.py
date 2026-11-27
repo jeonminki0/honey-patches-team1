@@ -5,7 +5,7 @@
 - 미끼로 간 요청, 위반 입력, 형식이 깨진 요청을 attacker.jsonl 에 기록
   (타깃 모드, 입력 길이(바이트), 응답 길이, 비밀 노출 수)
 원논문과 차이: 프로세스/TCP 연결 이전 대신 '상태 복원 + 요청 재전송'."""
-import argparse, json, os, signal, sys, threading, time, urllib.request, urllib.error
+import argparse, http.client, json, os, signal, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from honeypatch import config
@@ -89,13 +89,21 @@ def _reaper():
         reap_idle()
 
 def forward(port, method, path, body, headers):
-    req = urllib.request.Request(f"http://{config.HOST}:{port}{path}", data=body if method == "POST" else None,
-                                 method=method, headers=headers)
+    """요청 줄의 경로를 받은 글자 그대로 중계한다 (반례 C9).
+
+    전에는 urllib 로 "http://host:port" + path 를 이어 붙였다. 그러면 urllib 가
+    경로를 URL 로 다시 해석해서, 같은 요청을 타깃에 직접 보낸 것과 응답이 달라졌다.
+      - 절대 URI(GET http://127.0.0.1:9101/__health): 포트 자리가 깨져 InvalidURL
+      - 조각이 붙은 경로(/heartbeat#x): urllib 가 #x 를 떼고 /heartbeat 로 보냄
+    http.client 는 putrequest 에 넘긴 경로를 요청 줄에 그대로 싣는다.
+    4xx, 5xx 를 예외로 올리지 않으므로 상태 코드를 그대로 받는다."""
+    conn = http.client.HTTPConnection(config.HOST, port, timeout=10)
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            return r.status, dict(r.headers), r.read()
-    except urllib.error.HTTPError as e:
-        return e.code, dict(e.headers), e.read()
+        conn.request(method, path, body if method == "POST" else None, headers)
+        r = conn.getresponse()
+        return r.status, dict(r.getheaders()), r.read()
+    finally:
+        conn.close()
 
 def target_mode():
     """타깃이 어느 모드인지 /__health 에서 읽어 한 번만 저장한다 (응답 형식: target:unpatched).
@@ -158,7 +166,16 @@ class H(BaseHTTPRequestHandler):
         sid = self.headers.get("X-Session-Id", "anonymous")
         hdr = {"X-Session-Id": sid, "Content-Type": self.headers.get("Content-Type", "application/json")}
         port = PINNED.get(sid, config.TARGET_PORT)
-        st, rh, body = forward(port, method, self.path, raw, hdr)
+        try:
+            st, rh, body = forward(port, method, self.path, raw, hdr)
+        except Exception as e:
+            # 중계가 깨져도 응답은 반드시 나가야 한다. 연결을 끊으면 같은 요청을
+            # 타깃에 직접 보냈을 때와 반응이 달라져 프록시가 있다는 사실이 드러난다.
+            # 타깃은 중계할 수 없는 요청 줄(비ASCII 경로 등)에 404 not found 를
+            # 주므로 같은 응답을 돌려준다. 방어자 로그에는 사유를 남긴다.
+            dlog("relay_fail", session=sid, method=method, path=self.path[:200],
+                 error=type(e).__name__)
+            return self._reply(404, b"not found", {"Content-Type": "application/octet-stream"})
         dlog("route", session=sid, to="decoy" if port != config.TARGET_PORT else "target", status=st)
         if rh.get("X-HP-Forked") == "1":                 # 타깃이 미끼로 넘김 → 재전송
             port = PINNED[sid]
